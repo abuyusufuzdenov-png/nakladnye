@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="ru"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Накладные">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>NITTIONE · Накладные</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<style>
+/* Layout: NITTIONE monochrome — thin letter-spaced wordmark on white, one narrow column of hairline cards, black as the only accent */
+:root{
+  --bg:#f4f4f3;--surface:#ffffff;--surface-2:#f6f6f5;--ink:#0b0b0b;--muted:#6f6f6f;--line:#e1e1df;--line-strong:#0b0b0b;
+  --accent:#0b0b0b;--accent-soft:#efefee;--on-accent:#ffffff;--alert:#c4271c;
+  --head:#000000;--head-ink:#ffffff;--head-muted:#9a9a9a;
+  --font:"Montserrat",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --r:6px;--rb:4px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b0b0b;--surface:#141414;--surface-2:#1b1b1b;--ink:#f4f4f3;--muted:#9a9a9a;--line:#2a2a2a;--line-strong:#f4f4f3;
+  --accent:#f4f4f3;--accent-soft:#232323;--on-accent:#0b0b0b;--alert:#ff7a6e;
+  --head:#000000;--head-ink:#ffffff;--head-muted:#8a8a8a;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b0b0b;--surface:#141414;--surface-2:#1b1b1b;--ink:#f4f4f3;--muted:#9a9a9a;--line:#2a2a2a;--line-strong:#f4f4f3;
+  --accent:#f4f4f3;--accent-soft:#232323;--on-accent:#0b0b0b;--alert:#ff7a6e;
+  --head:#000000;--head-ink:#ffffff;--head-muted:#8a8a8a;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--head)}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{background:var(--head);color:var(--head-ink)}
+header .wrap{padding-block:30px 18px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.brand{margin:0;font-size:clamp(24px,7.5vw,34px);font-weight:500;letter-spacing:.5em;padding-left:.5em;line-height:1}
+.sub-brand{font-size:11px;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:var(--head-muted)}
+#status{font-size:12px;color:var(--head-muted);display:flex;align-items:center;gap:6px}
+#status i{width:7px;height:7px;border-radius:50%;border:1px solid var(--head-muted);display:inline-block}
+#status.ok i{background:var(--head-ink);border-color:var(--head-ink)}
+#status.err i{background:var(--alert);border-color:var(--alert)}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;padding-block:10px;scrollbar-width:none;justify-content:safe center}
+nav button{background:transparent;color:var(--muted);border:1px solid transparent;white-space:nowrap;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:9px 12px;min-height:38px}
+nav button.on{color:var(--ink);border-color:var(--ink)}
+main.wrap{padding-block:18px 96px;display:flex;flex-direction:column;gap:12px}
+h2{margin:0;font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
+h3{margin:0;font-size:15px;font-weight:600}
+.muted{color:var(--muted)}
+.card{background:var(--surface);border-radius:var(--r);padding:18px 16px;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.row>*{min-width:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:360px){.grid2{grid-template-columns:1fr}}
+.fld{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fld>span{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+input,select,textarea{width:100%;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--rb);padding:11px 12px;font:inherit;min-height:46px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--line-strong)}
+button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+button{font:inherit;font-weight:600;font-size:13px;letter-spacing:.04em;border-radius:var(--rb);padding:11px 14px;cursor:pointer;background:var(--surface);color:var(--ink);border:1px solid var(--line);min-height:42px}
+button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);text-transform:uppercase;letter-spacing:.1em;font-size:12px}
+button.danger{color:var(--ink);background:transparent;border-color:var(--line-strong)}
+button.ghost{background:transparent;border-color:transparent;text-decoration:underline;text-underline-offset:3px}
+button:disabled{opacity:.4;cursor:default}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chip{min-height:34px;padding:6px 12px;border-radius:100px;font-size:12px;white-space:nowrap;text-decoration:none}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button.ghost.chip{text-decoration:underline}
+.plist{display:flex;flex-direction:column;max-height:300px;overflow-y:auto;border-top:1px solid var(--line)}
+.prow{display:flex;justify-content:space-between;gap:10px;text-align:left;font-weight:500;background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:12px 4px;letter-spacing:0;font-size:14px}
+.prow .pr{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.prow.on{font-weight:700}.prow.on .pr{color:var(--ink)}
+.item{border:1px solid var(--line);border-radius:var(--rb);padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--surface-2)}
+.x{min-height:34px;padding:4px 10px;background:transparent;color:var(--muted);border-color:transparent}
+.quick{display:flex;gap:6px}
+.sub{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.total{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line-strong);padding:14px 2px 2px}
+.total strong{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.empty{margin:0;padding:18px 8px;text-align:center;color:var(--muted)}
+.pill{font-size:11px;font-weight:600;letter-spacing:.04em;border-radius:100px;padding:4px 9px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pill.debt{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.pill.paid{color:var(--ink);border-color:var(--ink)}
+.pill.over{color:var(--ink);border:1px dashed var(--ink)}
+.notice{border:1px solid var(--line-strong);border-radius:var(--rb);padding:12px;font-size:13px}
+.notice.info{border-color:var(--line);background:var(--surface)}
+.meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+th:first-child,td:first-child{text-align:left}
+th{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;border-bottom-color:var(--line-strong)}
+tr:last-child td{border-bottom:0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--rb);overflow:hidden}
+.stat{background:var(--surface);padding:12px;min-width:0}
+.stat b{display:block;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stat span{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+@media (max-width:420px){.stats{grid-template-columns:1fr 1fr}}
+.rcard{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;width:100%;background:var(--surface);padding:14px;letter-spacing:0;font-weight:500}
+.rcard .l{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rcard .r{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.list{display:flex;flex-direction:column;gap:8px}
+.lrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.lrow:last-child{border-bottom:0}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:var(--rb);font-weight:500;font-size:14px;max-width:calc(100% - 32px)}
+#toast.err{background:var(--alert);color:#fff}
+.dlg{position:fixed;inset:0;z-index:40;background:#000a;display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-left,0px))}
+.dlg-box{background:var(--surface);color:var(--ink);border-radius:var(--r);padding:20px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:16px}
+.dlg-box p{margin:0;white-space:pre-line}
+.dlg-box textarea{min-height:200px;font-size:13px}
+.dlg-box .actions{justify-content:flex-end}
+@media (prefers-reduced-motion:no-preference){button{transition:background .15s,border-color .15s,color .15s}}
+
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;-webkit-tap-highlight-color:transparent}
+img{max-width:100%}[hidden]{display:none!important}
+#status.warn i{background:transparent;border-color:var(--head-ink)}
+details{border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font-weight:600;font-size:13px}
+.steps{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+</style>
+</head><body>
+<header><div class="wrap"><h1 class="brand">NITTIONE</h1><div class="sub-brand">Накладные</div><div id="status"><i></i><span></span></div></div></header>
+<nav><div class="wrap" id="tabs"></div></nav>
+<main class="wrap" id="view"></main>
+<div id="toast" hidden></div>
+<div id="dlg" class="dlg" hidden><div class="dlg-box" role="dialog" aria-modal="true"><p id="dlg-t"></p><textarea id="dlg-ta" readonly hidden></textarea><div class="actions"><button id="dlg-no">Отмена</button><button id="dlg-ok" class="primary">OK</button></div></div></div>
+<script>window.INITIAL={"products":[{"id":"p1","name":"Карина","variant":"по голове","price":260.0},{"id":"p2","name":"Карина","variant":"рванка","price":260.0},{"id":"p3","name":"Бини","variant":"рванка","price":260.0},{"id":"p4","name":"Бини","variant":"с отв","price":260.0},{"id":"p5","name":"Бини","variant":"без отв","price":260.0},{"id":"p6","name":"Бини 5х5","variant":"Стандарт","price":260.0},{"id":"p7","name":"Сардиния","variant":"Стандарт","price":260.0},{"id":"p8","name":"Джек","variant":"отв","price":260.0},{"id":"p9","name":"Джек","variant":"валик","price":260.0},{"id":"p10","name":"Монро","variant":"Стандарт","price":260.0},{"id":"p11","name":"Эмиль","variant":"Стандарт","price":240.0},{"id":"p12","name":"Тони","variant":"Стандарт","price":240.0},{"id":"p13","name":"Карина","variant":"Стандарт","price":260.0},{"id":"p14","name":"Эмиль","variant":"келебек","price":220.0},{"id":"p15","name":"Бини","variant":"без отворота","price":260.0},{"id":"p16","name":"Леон","variant":"рванка","price":240.0},{"id":"p17","name":"Образцы","variant":"Стандарт","price":0.0},{"id":"p18","name":"Кусто","variant":"по голове","price":240.0},{"id":"p19","name":"Кусто","variant":"с пимпой","price":240.0},{"id":"p20","name":"София","variant":"балаклава","price":450.0},{"id":"p21","name":"Бини 5х5","variant":"флис","price":280.0},{"id":"p22","name":"Бини","variant":"с отв,флис","price":280.0},{"id":"p23","name":"Сардиния","variant":"флис","price":280.0},{"id":"p24","name":"Бини","variant":"рванка,флис","price":280.0},{"id":"p25","name":"Карина","variant":"рванка,флис","price":280.0},{"id":"p26","name":"Леон","variant":"Стандарт","price":240.0},{"id":"p27","name":"Бостон","variant":"Стандарт","price":240.0},{"id":"p28","name":"Кусто","variant":"Стандарт","price":240.0},{"id":"p29","name":"Лопата 2х2","variant":"Стандарт","price":280.0},{"id":"p30","name":"Джек","variant":"отворот","price":260.0},{"id":"p31","name":"Ханой","variant":"Стандарт","price":240.0},{"id":"p32","name":"Карина","variant":"без рванки","price":260.0},{"id":"p33","name":"Микаса","variant":"Стандарт","price":260.0},{"id":"p34","name":"Карина","variant":"флис","price":280.0},{"id":"p35","name":"Бини","variant":"с отв, флис","price":280.0},{"id":"p36","name":"Карина","variant":"по голове,флис","price":280.0}],"recipients":[{"id":"r1","name":"Аня-Уфа"},{"id":"r2","name":"Катя Красноярск"},{"id":"r3","name":"Лиза Екатеринбург"},{"id":"r4","name":"Фарида Новосибирск"}],"shipments":[{"id":"s1","number":1,"date":"2026-09-01","recipient":"Катя Красноярск","items":[{"productId":"p1","name":"Карина","variant":"по голове","qty":300.0,"price":260.0},{"productId":"p2","name":"Карина","variant":"рванка","qty":300.0,"price":260.0},{"productId":"p3","name":"Бини","variant":"рванка","qty":300.0,"price":260.0},{"productId":"p4","name":"Бини","variant":"с отв","qty":300.0,"price":260.0},{"productId":"p5","name":"Бини","variant":"без отв","qty":300.0,"price":260.0},{"productId":"p6","name":"Бини 5х5","variant":"Стандарт","qty":300.0,"price":260.0},{"productId":"p7","name":"Сардиния","variant":"Стандарт","qty":300.0,"price":260.0},{"productId":"p8","name":"Джек","variant":"отв","qty":300.0,"price":260.0},{"productId":"p9","name":"Джек","variant":"валик","qty":300.0,"price":260.0}],"createdAt":"2026-09-01T12:00:00.000Z"},{"id":"s2","number":2,"date":"2026-09-12","recipient":"Катя Красноярск","items":[{"productId":"p5","name":"Бини","variant":"без отв","qty":400.0,"price":260.0},{"productId":"p8","name":"Джек","variant":"отв","qty":400.0,"price":260.0},{"productId":"p9","name":"Джек","variant":"валик","qty":400.0,"price":260.0},{"productId":"p6","name":"Бини 5х5","variant":"Стандарт","qty":300.0,"price":260.0},{"productId":"p10","name":"Монро","variant":"Стандарт","qty":100.0,"price":260.0},{"productId":"p11","name":"Эмиль","variant":"Стандарт","qty":100.0,"price":240.0},{"productId":"p12","name":"Тони","variant":"Стандарт","qty":100.0,"price":240.0}],"createdAt":"2026-09-12T12:00:00.000Z"},{"id":"s3","number":3,"date":"2026-09-15","recipient":"Катя Красноярск","items":[{"productId":"p1","name":"Карина","variant":"по голове","qty":400.0,"price":260.0},{"productId":"p6","name":"Бини 5х5","variant":"Стандарт","qty":100.0,"price":260.0},{"productId":"p7","name":"Сардиния","variant":"Стандарт","qty":400.0,"price":260.0}],"createdAt":"2026-09-15T12:00:00.000Z"},{"id":"s4","number":4,"date":"2026-09-19","recipient":"Катя Красноярск","items":[{"productId":"p13","name":"Карина","variant":"Стандарт","qty":400.0,"price":260.0},{"productId":"p2","name":"Карина","variant":"рванка","qty":400.0,"price":260.0},{"productId":"p8","name":"Джек","variant":"отв","qty":400.0,"price":260.0},{"productId":"p9","name":"Джек","variant":"валик","qty":400.0,"price":260.0},{"productId":"p11","name":"Эмиль","variant":"Стандарт","qty":300.0,"price":240.0},{"productId":"p12","name":"Тони","variant":"Стандарт","qty":300.0,"price":240.0},{"productId":"p14","name":"Эмиль","variant":"келебек","qty":102.0,"price":220.0}],"createdAt":"2026-09-19T12:00:00.000Z"},{"id":"s5","number":5,"date":"2026-09-21","recipient":"Катя Красноярск","items":[{"productId":"p15","name":"Бини","variant":"без отворота","qty":400.0,"price":260.0},{"productId":"p3","name":"Бини","variant":"рванка","qty":400.0,"price":260.0},{"productId":"p2","name":"Карина","variant":"рванка","qty":200.0,"price":260.0},{"productId":"p10","name":"Монро","variant":"Стандарт","qty":500.0,"price":260.0},{"productId":"p16","name":"Леон","variant":"рванка","qty":85.0,"price":240.0},{"productId":"p17","name":"Образцы","variant":"Стандарт","qty":23.0,"price":0.0}],"createdAt":"2026-09-21T12:00:00.000Z"},{"id":"s6","number":6,"date":"2026-09-29","recipient":"Катя Красноярск","items":[{"productId":"p4","name":"Бини","variant":"с отв","qty":580.0,"price":260.0},{"productId":"p1","name":"Карина","variant":"по голове","qty":404.0,"price":260.0},{"productId":"p2","name":"Карина","variant":"рванка","qty":204.0,"price":260.0},{"productId":"p5","name":"Бини","variant":"без отв","qty":185.0,"price":260.0},{"productId":"p3","name":"Бини","variant":"рванка","qty":368.0,"price":260.0},{"productId":"p6","name":"Бини 5х5","variant":"Стандарт","qty":766.0,"price":260.0},{"productId":"p9","name":"Джек","variant":"валик","qty":400.0,"price":260.0},{"productId":"p8","name":"Джек","variant":"отв","qty":400.0,"price":260.0},{"productId":"p18","name":"Кусто","variant":"по голове","qty":105.0,"price":240.0},{"productId":"p19","name":"Кусто","variant":"с пимпой","qty":105.0,"price":240.0},{"productId":"p20","name":"София","variant":"балаклава","qty":51.0,"price":450.0}],"createdAt":"2026-09-29T12:00:00.000Z"},{"id":"s7","number":7,"date":"2026-10-03","recipient":"Катя Красноярск","items":[{"productId":"p7","name":"Сардиния","variant":"Стандарт","qty":500.0,"price":260.0}],"createdAt":"2026-10-03T12:00:00.000Z"},{"id":"s8","number":8,"date":"2026-10-06","recipient":"Катя Красноярск","items":[{"productId":"p10","name":"Монро","variant":"Стандарт","qty":500.0,"price":260.0},{"productId":"p20","name":"София","variant":"балаклава","qty":21.0,"price":450.0}],"createdAt":"2026-10-06T12:00:00.000Z"},{"id":"s9","number":9,"date":"2026-10-10","recipient":"Катя Красноярск","items":[{"productId":"p21","name":"Бини 5х5","variant":"флис","qty":300.0,"price":280.0},{"productId":"p22","name":"Бини","variant":"с отв,флис","qty":300.0,"price":280.0},{"productId":"p23","name":"Сардиния","variant":"флис","qty":300.0,"price":280.0},{"productId":"p24","name":"Бини","variant":"рванка,флис","qty":300.0,"price":280.0},{"productId":"p25","name":"Карина","variant":"рванка,флис","qty":300.0,"price":280.0}],"createdAt":"2026-10-10T12:00:00.000Z"},{"id":"s10","number":10,"date":"2026-09-04","recipient":"Аня-Уфа","items":[{"productId":"p8","name":"Джек","variant":"отв","qty":100.0,"price":260.0},{"productId":"p9","name":"Джек","variant":"валик","qty":100.0,"price":260.0},{"productId":"p26","name":"Леон","variant":"Стандарт","qty":100.0,"price":240.0},{"productId":"p27","name":"Бостон","variant":"Стандарт","qty":100.0,"price":240.0},{"productId":"p28","name":"Кусто","variant":"Стандарт","qty":100.0,"price":240.0},{"productId":"p13","name":"Карина","variant":"Стандарт","qty":100.0,"price":260.0},{"productId":"p1","name":"Карина","variant":"по голове","qty":100.0,"price":260.0},{"productId":"p29","name":"Лопата 2х2","variant":"Стандарт","qty":100.0,"price":280.0},{"productId":"p7","name":"Сардиния","variant":"Стандарт","qty":100.0,"price":260.0},{"productId":"p4","name":"Бини","variant":"с отв","qty":100.0,"price":260.0}],"createdAt":"2026-09-04T12:00:00.000Z"},{"id":"s11","number":11,"date":"2026-09-04","recipient":"Лиза Екатеринбург","items":[{"productId":"p6","name":"Бини 5х5","variant":"Стандарт","qty":100.0,"price":260.0},{"productId":"p30","name":"Джек","variant":"отворот","qty":150.0,"price":260.0},{"productId":"p9","name":"Джек","variant":"валик","qty":240.0,"price":260.0},{"productId":"p1","name":"Карина","variant":"по голове","qty":100.0,"price":260.0},{"productId":"p7","name":"Сардиния","variant":"Стандарт","qty":90.0,"price":260.0},{"productId":"p5","name":"Бини","variant":"без отв","qty":100.0,"price":260.0},{"productId":"p31","name":"Ханой","variant":"Стандарт","qty":100.0,"price":240.0}],"createdAt":"2026-09-04T12:00:00.000Z"},{"id":"s12","number":12,"date":"2026-09-18","recipient":"Лиза Екатеринбург","items":[{"productId":"p6","name":"Бини 5х5","variant":"Стандарт","qty":150.0,"price":260.0},{"productId":"p30","name":"Джек","variant":"отворот","qty":265.0,"price":260.0},{"productId":"p9","name":"Джек","variant":"валик","qty":151.0,"price":260.0},{"productId":"p10","name":"Монро","variant":"Стандарт","qty":150.0,"price":260.0}],"createdAt":"2026-09-18T12:00:00.000Z"},{"id":"s13","number":13,"date":"2026-10-02","recipient":"Лиза Екатеринбург","items":[{"productId":"p7","name":"Сардиния","variant":"Стандарт","qty":100.0,"price":260.0}],"createdAt":"2026-10-02T12:00:00.000Z"},{"id":"s14","number":14,"date":"2026-09-04","recipient":"Фарида Новосибирск","items":[{"productId":"p4","name":"Бини","variant":"с отв","qty":200.0,"price":260.0},{"productId":"p32","name":"Карина","variant":"без рванки","qty":200.0,"price":260.0},{"productId":"p3","name":"Бини","variant":"рванка","qty":100.0,"price":260.0},{"productId":"p26","name":"Леон","variant":"Стандарт","qty":100.0,"price":240.0},{"productId":"p28","name":"Кусто","variant":"Стандарт","qty":100.0,"price":240.0},{"productId":"p31","name":"Ханой","variant":"Стандарт","qty":100.0,"price":240.0}],"createdAt":"2026-09-04T12:00:00.000Z"},{"id":"s15","number":15,"date":"2026-09-08","recipient":"Фарида Новосибирск","items":[{"productId":"p29","name":"Лопата 2х2","variant":"Стандарт","qty":100.0,"price":280.0},{"productId":"p1","name":"Карина","variant":"по голове","qty":100.0,"price":260.0},{"productId":"p7","name":"Сардиния","variant":"Стандарт","qty":100.0,"price":260.0},{"productId":"p6","name":"Бини 5х5","variant":"Стандарт","qty":100.0,"price":260.0},{"productId":"p15","name":"Бини","variant":"без отворота","qty":100.0,"price":260.0},{"productId":"p33","name":"Микаса","variant":"Стандарт","qty":100.0,"price":260.0},{"productId":"p9","name":"Джек","variant":"валик","qty":100.0,"price":260.0}],"createdAt":"2026-09-08T12:00:00.000Z"},{"id":"s16","number":16,"date":"2026-09-26","recipient":"Фарида Новосибирск","items":[{"productId":"p29","name":"Лопата 2х2","variant":"Стандарт","qty":105.0,"price":280.0},{"productId":"p7","name":"Сардиния","variant":"Стандарт","qty":200.0,"price":260.0},{"productId":"p6","name":"Бини 5х5","variant":"Стандарт","qty":100.0,"price":260.0}],"createdAt":"2026-09-26T12:00:00.000Z"},{"id":"s17","number":17,"date":"2026-10-03","recipient":"Фарида Новосибирск","items":[{"productId":"p34","name":"Карина","variant":"флис","qty":200.0,"price":280.0},{"productId":"p23","name":"Сардиния","variant":"флис","qty":200.0,"price":280.0},{"productId":"p21","name":"Бини 5х5","variant":"флис","qty":200.0,"price":280.0},{"productId":"p35","name":"Бини","variant":"с отв, флис","qty":200.0,"price":280.0},{"productId":"p12","name":"Тони","variant":"Стандарт","qty":100.0,"price":240.0},{"productId":"p11","name":"Эмиль","variant":"Стандарт","qty":100.0,"price":240.0}],"createdAt":"2026-10-03T12:00:00.000Z"},{"id":"s18","number":18,"date":"2026-10-11","recipient":"Фарида Новосибирск","items":[{"productId":"p25","name":"Карина","variant":"рванка,флис","qty":200.0,"price":280.0},{"productId":"p36","name":"Карина","variant":"по голове,флис","qty":200.0,"price":280.0},{"productId":"p3","name":"Бини","variant":"рванка","qty":200.0,"price":260.0},{"productId":"p2","name":"Карина","variant":"рванка","qty":200.0,"price":260.0},{"productId":"p4","name":"Бини","variant":"с отв","qty":200.0,"price":260.0}],"createdAt":"2026-10-11T12:00:00.000Z"}],"payments":[]};</script>
+<script>
+const COLS=['products','recipients','shipments','payments'];
+const LS='nittione_nakladnye_v2',LSC='nittione_sync',LSM='nittione_sync_meta';
+const S={products:[],recipients:[],shipments:[],payments:[]};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf=new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2});
+const num=n=>nf.format(Number(n)||0),money=n=>num(n)+' ₽';
+const sum=items=>(items||[]).reduce((a,x)=>a+(+x.qty||0)*(+x.price||0),0);
+const count=items=>(items||[]).reduce((a,x)=>a+(+x.qty||0),0);
+function today(){return new Date().toLocaleDateString('en-CA')}
+const fmtD=d=>d?String(d).split('-').reverse().join('.'):'';
+const label=x=>x.name+(x.variant&&x.variant!=='Стандарт'?' · '+x.variant:'');
+const byName=(a,b)=>(a.name+' '+a.variant).localeCompare(b.name+' '+b.variant,'ru');
+const recNames=()=>[...new Set(S.recipients.map(r=>r.name))].sort((a,b)=>a.localeCompare(b,'ru'));
+const nextNo=()=>1+Math.max(0,...S.shipments.map(s=>+s.number||0));
+const byDateDesc=(a,b)=>(b.date||'').localeCompare(a.date||'')||(+b.number||0)-(+a.number||0);
+const uid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const nowIso=()=>new Date().toISOString();
+function lastRecipient(){const s=S.shipments.slice().sort(byDateDesc)[0];return s?.recipient||recNames()[0]||''}
+function monthName(m){const[y,mm]=m.split('-');const t=new Date(+y,+mm-1,1).toLocaleDateString('ru-RU',{month:'long',year:'numeric'});return t.charAt(0).toUpperCase()+t.slice(1)}
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v);return true}catch(e){return false}};
+
+/* ---------- local store ---------- */
+let store=null;try{const o=JSON.parse(lsGet(LS));if(o&&COLS.every(c=>Array.isArray(o[c])))store=o}catch(e){}
+if(!store)store={products:[],recipients:[],shipments:[],payments:[]};
+let cfg={url:'',key:''};try{cfg={...cfg,...JSON.parse(lsGet(LSC)||'{}')}}catch(e){}
+let meta={dirty:false,last:0};try{meta={...meta,...JSON.parse(lsGet(LSM)||'{}')}}catch(e){}
+let rev=0,syncing=false,again=false,syncErr='',firstPull=false;
+function persist(){if(!lsSet(LS,JSON.stringify(store)))toast('Память браузера заполнена, изменения не сохранились','err');lsSet(LSM,JSON.stringify(meta))}
+function rebuild(){COLS.forEach(c=>S[c]=store[c].filter(x=>!x.deleted))}
+function put(col,rec,silent){rec.updatedAt=nowIso();const i=store[col].findIndex(x=>x.id===rec.id);if(i>=0)store[col][i]=rec;else store[col].push(rec);if(!silent)commit()}
+function remove(col,id){const r=store[col].find(x=>x.id===id);if(r)put(col,{...r,deleted:true})}
+function commit(){rev++;meta.dirty=true;persist();rebuild();queueSync()}
+function merge(a,b){const res={};COLS.forEach(c=>{const m=new Map();[...(a[c]||[]),...(b[c]||[])].forEach(x=>{if(!x||!x.id)return;const cur=m.get(x.id);if(!cur||String(x.updatedAt||'')>String(cur.updatedAt||''))m.set(x.id,x)});res[c]=[...m.values()]});return res}
+
+/* ---------- sync with Google Sheets ---------- */
+let qt;function queueSync(){clearTimeout(qt);qt=setTimeout(()=>sync(),700)}
+async function sync(manual){
+  if(!cfg.url){drawStatus();return}
+  if(syncing){again=true;return}
+  syncing=true;drawStatus();const r0=rev;
+  try{
+    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),30000);
+    const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key:cfg.key,data:store}),signal:ctl.signal,redirect:'follow'});
+    clearTimeout(to);
+    let j;try{j=await r.json()}catch(e){throw new Error('Таблица ответила не так. Проверь ссылку и доступ «Все»')}
+    if(!j.ok)throw new Error(j.error==='Неверный ключ'?'Неверный ключ. Проверь его во вкладке «Данные»':(j.error||'Ошибка таблицы'));
+    store=merge(store,j.data||{});if(rev===r0)meta.dirty=false;meta.last=Date.now();syncErr='';persist();rebuild();
+    if(manual)toast('Синхронизировано с таблицей');
+  }catch(e){
+    syncErr=!navigator.onLine?'нет интернета':e.name==='AbortError'?'таблица долго не отвечает':e.name==='TypeError'?'таблица недоступна, проверь ссылку':e.message;
+    if(manual)toast('Не удалось: '+syncErr,'err');
+  }finally{syncing=false;firstPull=false;drawStatus();softRender();if(again){again=false;queueSync()}}
+}
+window.addEventListener('online',()=>sync());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+setInterval(()=>{if(meta.dirty&&!syncing)sync()},60000);
+
+/* ---------- ui state ---------- */
+let tab=lsGet('nak_tab')||'new',editing=null,hq='',hr='',pq='',cq='',period='all',openRec=null,editProd=null,openShip=null,pending=false;
+let draft={recipient:'',date:today(),items:[]};
+let tt;function toast(t,kind){const el=$('toast');el.textContent=t;el.className=kind==='err'?'err':'';el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,kind==='err'?4500:2600)}
+function ask(text,ok='OK',opts={}){return new Promise(res=>{const d=$('dlg'),ta=$('dlg-ta'),okB=$('dlg-ok'),no=$('dlg-no');$('dlg-t').textContent=text;okB.textContent=ok;okB.className=opts.danger?'danger':'primary';okB.hidden=!!opts.noOk;no.textContent=opts.noOk?'Закрыть':'Отмена';ta.hidden=!opts.text;if(opts.text)ta.value=opts.text;d.hidden=false;if(opts.text){ta.focus();ta.select()}const done=v=>{d.hidden=true;okB.onclick=no.onclick=null;res(v)};okB.onclick=()=>done(true);no.onclick=()=>done(false)})}
+
+const TABS=[['new','Накладная'],['history','История'],['summary','Сводка'],['catalog','Каталог'],['data','Данные']];
+function nav(t){tab=t;lsSet('nak_tab',t);render();window.scrollTo(0,0)}
+function inputFocused(){const a=document.activeElement;return a&&$('view').contains(a)&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)}
+function softRender(){if(inputFocused()){pending=true;return}render()}
+document.addEventListener('focusout',()=>{if(pending)setTimeout(()=>{if(pending&&!inputFocused()){pending=false;render()}},60)});
+function drawStatus(){
+  const el=$('status');let c='',t;
+  const time=meta.last?new Date(meta.last).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+  if(!cfg.url){c='warn';t='Данные только на этом телефоне'}
+  else if(syncing){t='Синхронизация…'}
+  else if(syncErr){c='err';t='Не отправлено: '+syncErr+'. Всё сохранено на телефоне'}
+  else if(meta.dirty){c='warn';t='Ждёт отправки в таблицу'}
+  else{c='ok';t='Сохранено в таблице'+(time?' · '+time:'')}
+  el.className=c;el.querySelector('span').textContent=t;
+}
+function render(){
+  if(!TABS.some(t=>t[0]===tab))tab='new';
+  $('tabs').innerHTML=TABS.map(([id,n])=>`<button class="${tab===id?'on':''}" onclick="nav('${id}')">${n}</button>`).join('');
+  drawStatus();
+  const empty=!store.products.length&&!store.shipments.length&&!store.recipients.length;
+  if(empty&&tab!=='data'){
+    if(cfg.url&&(syncing||firstPull)){$('view').innerHTML='<section class="card"><p class="empty">Загружаю данные из таблицы…</p></section>';return}
+    return renderWelcome();
+  }
+  ({new:renderNew,history:renderHistory,summary:renderSummary,catalog:renderCatalog,data:renderData})[tab]();
+}
+function renderWelcome(){
+  $('view').innerHTML=`<section class="card"><h2>С чего начнём</h2>
+  <p class="meta" style="margin:0">Данных на этом телефоне пока нет. Выбери один вариант.</p>
+  <div class="list">
+    <button class="rcard" onclick="loadInitial()"><span class="l"><b>Перенести мои накладные</b><span class="meta">18 накладных, 36 моделей и 4 получателя из старого файла (до 11.10.2026)</span></span><span class="meta">›</span></button>
+    <button class="rcard" onclick="nav('data')"><span class="l"><b>Подключить Google Таблицу</b><span class="meta">Если таблица уже подключена на другом телефоне, данные загрузятся из неё</span></span><span class="meta">›</span></button>
+    <button class="rcard" onclick="$('f-imp0').click()"><span class="l"><b>Восстановить из резервной копии</b><span class="meta">Файл .json из старого или облачного приложения</span></span><span class="meta">›</span></button>
+  </div>
+  <input id="f-imp0" type="file" accept=".json,application/json" hidden onchange="importData(this.files[0]);this.value=''"></section>`;
+}
+function loadInitial(){const d=window.INITIAL;COLS.forEach(c=>(d[c]||[]).forEach(x=>put(c,structuredClone(x),true)));commit();toast('Перенесено: '+d.shipments.length+' накладных');render()}
+
+/* ---------- new invoice ---------- */
+function recOptions(sel){const names=recNames();if(sel&&!names.includes(sel))names.unshift(sel);if(!names.length)return'<option value="">Сначала добавь получателя во вкладке «Данные»</option>';return names.map(n=>`<option value="${esc(n)}" ${n===sel?'selected':''}>${esc(n)}</option>`).join('')}
+function itemRow(x,i){return`<div class="item"><div class="row"><b>${esc(label(x))}</b><button class="x" aria-label="Убрать позицию" onclick="removeItem(${i})">✕</button></div><div class="grid2"><label class="fld"><span>Количество, шт.</span><input id="q${i}" type="number" inputmode="decimal" min="0" step="any" value="${esc(x.qty)}" oninput="setItem(${i},'qty',this.value)"></label><label class="fld"><span>Цена, ₽</span><input id="p${i}" type="number" inputmode="decimal" min="0" step="any" value="${esc(x.price)}" oninput="setItem(${i},'price',this.value)"></label></div><div class="row"><div class="quick">${[10,50,100].map(n=>`<button class="chip" onclick="bump(${i},${n})">+${n}</button>`).join('')}</div><span class="sub" id="st${i}">${money(x.qty*x.price)}</span></div></div>`}
+function renderNew(){
+  if(!draft.recipient)draft.recipient=lastRecipient();
+  const q=draft.items,no=editing?editing.number:nextNo();
+  $('view').innerHTML=`
+  ${cfg.url?'':'<div class="notice">Сейчас данные хранятся только в этом телефоне. Подключи Google Таблицу во вкладке «Данные», чтобы ничего не потерять.</div>'}
+  <section class="card">
+    <div class="row"><h2>${editing?'Изменение № '+esc(no):'Накладная № '+esc(no)}</h2>${editing?'<button class="ghost" onclick="cancelEdit()">Отмена</button>':''}</div>
+    <div class="grid2">
+      <label class="fld"><span>Получатель</span><select id="f-rec" onchange="draft.recipient=this.value">${recOptions(draft.recipient)}</select></label>
+      <label class="fld"><span>Дата</span><input id="f-date" type="date" value="${esc(draft.date)}" onchange="draft.date=this.value"></label>
+    </div>
+  </section>
+  <section class="card">
+    <div class="row"><h2>Добавить модель</h2><button class="ghost chip" onclick="nav('catalog')">+ Новая модель</button></div>
+    <input id="f-pq" type="search" placeholder="Поиск: бини, флис, джек…" value="${esc(pq)}" oninput="pq=this.value;drawPList()">
+    <div id="plist" class="plist"></div>
+  </section>
+  <section class="card">
+    <div class="row"><h2>В накладной</h2><span class="muted">${q.length} поз.</span></div>
+    ${q.length?q.map(itemRow).join(''):'<p class="empty">Нажми на модель выше, чтобы добавить её</p>'}
+    <div class="total"><span class="muted">Всего <b id="t-count">${num(count(q))}</b> шт.</span><strong id="t-sum">${money(sum(q))}</strong></div>
+    <div class="actions">
+      <button class="primary" onclick="saveInvoice()">${editing?'Сохранить изменения':'Сохранить накладную'}</button>
+      <button onclick="exportPNG(draftDoc())">Фото</button><button onclick="exportPDF(draftDoc())">PDF</button><button onclick="copyText(draftDoc())">Текст</button>
+      ${q.length?'<button class="ghost" onclick="resetDraft()">Очистить</button>':''}
+    </div>
+  </section>`;
+  drawPList();
+}
+function drawPList(){const el=$('plist');if(!el)return;const t=pq.trim().toLowerCase(),inD=new Set(draft.items.map(x=>x.productId));const ps=S.products.slice().sort(byName).filter(p=>!t||(p.name+' '+p.variant).toLowerCase().includes(t));el.innerHTML=ps.length?ps.map(p=>`<button class="prow ${inD.has(p.id)?'on':''}" onclick="addItem('${esc(p.id)}')"><span>${esc(label(p))}</span><span class="pr">${inD.has(p.id)?'✓ ':''}${money(p.price)}</span></button>`).join(''):`<p class="empty">${S.products.length?'Ничего не нашлось':'Каталог пуст. Добавь модели во вкладке «Каталог»'}</p>`}
+function addItem(id){const p=S.products.find(x=>x.id===id);if(!p)return;const i=draft.items.findIndex(x=>x.productId===id);if(i>=0){toast('Уже в накладной, поменяй количество');const el=$('q'+i);el?.focus();el?.scrollIntoView({block:'center'});return}draft.items.push({productId:p.id,name:p.name,variant:p.variant||'Стандарт',qty:100,price:+p.price||0});renderNew();toast('Добавлено: '+label(p))}
+function removeItem(i){draft.items.splice(i,1);renderNew()}
+function updTotals(i){const x=draft.items[i];if(x&&$('st'+i))$('st'+i).textContent=money((+x.qty||0)*(+x.price||0));$('t-count').textContent=num(count(draft.items));$('t-sum').textContent=money(sum(draft.items))}
+function setItem(i,k,v){draft.items[i][k]=v;updTotals(i)}
+function bump(i,n){const x=draft.items[i];x.qty=(+x.qty||0)+n;$('q'+i).value=x.qty;updTotals(i)}
+async function resetDraft(){if(draft.items.length&&!await ask('Очистить текущую накладную?','Очистить',{danger:1}))return;editing=null;draft={recipient:draft.recipient,date:today(),items:[]};renderNew()}
+function cancelEdit(){editing=null;draft={recipient:lastRecipient(),date:today(),items:[]};renderNew()}
+function draftDoc(){if(!draft.items.length){toast('Сначала добавь позиции','err');return null}return{number:editing?.number||'черновик',recipient:draft.recipient,date:draft.date,items:draft.items.map(x=>({...x,qty:+x.qty||0,price:+x.price||0}))}}
+function saveInvoice(){
+  if(!draft.recipient)return toast('Выбери получателя','err');
+  if(!draft.items.length)return toast('Добавь хотя бы одну модель','err');
+  if(draft.items.some(x=>!(+x.qty>0)||!(+x.price>=0)))return toast('Проверь количество и цены','err');
+  const no=editing?editing.number:nextNo();
+  const rec={id:editing?.id||uid('s'),number:no,date:draft.date||today(),recipient:draft.recipient,items:draft.items.map(x=>({productId:x.productId||'',name:x.name,variant:x.variant||'Стандарт',qty:+x.qty,price:+x.price})),createdAt:editing?.createdAt||nowIso()};
+  put('shipments',rec);
+  toast('Накладная № '+no+' сохранена');editing=null;draft={recipient:rec.recipient,date:today(),items:[]};openShip=rec.id;hq='';hr='';nav('history');
+}
+
+/* ---------- history ---------- */
+function renderHistory(){
+  $('view').innerHTML=`<section class="card"><input id="f-hq" type="search" placeholder="Поиск по номеру, модели, дате…" value="${esc(hq)}" oninput="hq=this.value;drawHList()"><div class="chips">${['',...recNames()].map(r=>`<button class="chip ${hr===r?'on':''}" data-r="${esc(r)}" onclick="hr=this.dataset.r;renderHistory()">${r?esc(r):'Все'}</button>`).join('')}</div><div id="h-sum" class="meta"></div></section><div id="hlist" class="list"></div>`;
+  drawHList();
+}
+function drawHList(){
+  const t=hq.trim().toLowerCase();
+  const ss=S.shipments.filter(s=>(!hr||s.recipient===hr)&&(!t||(s.number+' '+s.recipient+' '+fmtD(s.date)+' '+(s.items||[]).map(label).join(' ')).toLowerCase().includes(t))).sort(byDateDesc);
+  $('h-sum').textContent=`Найдено ${ss.length} · ${num(ss.reduce((a,s)=>a+count(s.items),0))} шт. · ${money(ss.reduce((a,s)=>a+sum(s.items),0))}`;
+  $('hlist').innerHTML=ss.length?ss.map(s=>{const open=openShip===s.id,id=esc(s.id);return`<section class="card">
+    <div class="row"><h3>№ ${esc(s.number)} · ${esc(s.recipient)}</h3><span class="pill">${fmtD(s.date)}</span></div>
+    <div class="row"><span class="meta">${(s.items||[]).length} поз. · ${num(count(s.items))} шт. · <b>${money(sum(s.items))}</b></span><button class="ghost chip" onclick="toggleShip('${id}')">${open?'Скрыть':'Состав'}</button></div>
+    ${open?`<div class="tbl"><table><thead><tr><th>Модель</th><th>Шт.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>${(s.items||[]).map(x=>`<tr><td>${esc(label(x))}</td><td>${num(x.qty)}</td><td>${num(x.price)}</td><td>${num(x.qty*x.price)}</td></tr>`).join('')}</tbody></table></div>`:''}
+    <div class="actions"><button onclick="exportPNG(shipById('${id}'))">Фото</button><button onclick="exportPDF(shipById('${id}'))">PDF</button><button onclick="copyText(shipById('${id}'))">Текст</button><button onclick="repeatInvoice('${id}')">Повторить</button><button onclick="editInvoice('${id}')">Изменить</button><button class="danger" onclick="deleteInvoice('${id}')">Удалить</button></div>
+  </section>`}).join(''):`<section class="card"><p class="empty">${S.shipments.length?'Ничего не нашлось':'Отправок пока нет. Создай первую накладную'}</p></section>`;
+}
+const shipById=id=>S.shipments.find(x=>x.id===id);
+function toggleShip(id){openShip=openShip===id?null:id;drawHList()}
+function editInvoice(id){const s=shipById(id);if(!s)return;editing=s;draft={recipient:s.recipient,date:s.date,items:structuredClone(s.items||[])};nav('new')}
+function repeatInvoice(id){const s=shipById(id);if(!s)return;editing=null;draft={recipient:s.recipient,date:today(),items:structuredClone(s.items||[])};nav('new');toast('Скопировано из № '+s.number+'. Проверь количество')}
+async function deleteInvoice(id){const s=shipById(id);if(!s||!await ask(`Удалить накладную № ${s.number} (${s.recipient})? Это нельзя отменить.`,'Удалить',{danger:1}))return;remove('shipments',id);toast('Накладная удалена');render()}
+
+/* ---------- summary ---------- */
+function recStats(name){const sh=S.shipments.filter(s=>s.recipient===name),pay=S.payments.filter(p=>p.recipient===name);const shipped=sh.reduce((a,s)=>a+sum(s.items),0),paid=pay.reduce((a,p)=>a+(+p.amount||0),0);return{sh,pay,shipped,paid,debt:shipped-paid}}
+function debtPill(d){return d>0.005?`<span class="pill debt">долг ${money(d)}</span>`:d<-0.005?`<span class="pill over">переплата ${money(-d)}</span>`:`<span class="pill paid">оплачено</span>`}
+function renderSummary(){
+  if(openRec)return renderRecipient(openRec);
+  const months=[...new Set(S.shipments.map(s=>(s.date||'').slice(0,7)).filter(Boolean))].sort().reverse();
+  if(period!=='all'&&!months.includes(period))period='all';
+  const inP=s=>period==='all'||(s.date||'').startsWith(period),ps=S.shipments.filter(inP);
+  const names=[...new Set([...recNames(),...S.shipments.map(s=>s.recipient),...S.payments.map(p=>p.recipient)])].filter(Boolean);
+  const rows=names.map(n=>{const st=recStats(n),p=ps.filter(s=>s.recipient===n);return{n,st,pq:p.reduce((a,s)=>a+count(s.items),0),ps:p.reduce((a,s)=>a+sum(s.items),0)}}).sort((a,b)=>b.ps-a.ps||b.st.debt-a.st.debt);
+  const models={};ps.forEach(s=>(s.items||[]).forEach(x=>{const k=label(x);models[k]=models[k]||{q:0,s:0};models[k].q+=+x.qty||0;models[k].s+=(+x.qty||0)*(+x.price||0)}));
+  const ml=Object.entries(models).sort((a,b)=>b[1].q-a[1].q);
+  const totalDebt=names.reduce((a,n)=>a+Math.max(0,recStats(n).debt),0);
+  $('view').innerHTML=`
+  <section class="card">
+    <label class="fld"><span>Период</span><select id="f-period" onchange="period=this.value;renderSummary()"><option value="all">Всё время</option>${months.map(m=>`<option value="${m}" ${m===period?'selected':''}>${monthName(m)}</option>`).join('')}</select></label>
+    <div class="stats"><div class="stat"><b>${num(ps.reduce((a,s)=>a+count(s.items),0))}</b><span>шт. отгружено</span></div><div class="stat"><b>${money(ps.reduce((a,s)=>a+sum(s.items),0))}</b><span>на сумму</span></div><div class="stat"><b>${money(totalDebt)}</b><span>долг получателей</span></div></div>
+  </section>
+  <section class="card"><h2>Получатели</h2><div class="list">${rows.length?rows.map(r=>`<button class="rcard" data-r="${esc(r.n)}" onclick="openRec=this.dataset.r;renderSummary();window.scrollTo(0,0)"><span class="l"><b>${esc(r.n)}</b><span class="meta">${period==='all'?'за всё время':'за месяц'}: ${num(r.pq)} шт. · ${money(r.ps)}</span></span><span class="r">${debtPill(r.st.debt)}<span class="meta">›</span></span></button>`).join(''):'<p class="empty">Получателей пока нет</p>'}</div><p class="meta" style="margin:0">Нажми на получателя, чтобы записать оплату и увидеть все его накладные.</p></section>
+  <section class="card"><h2>По моделям</h2>${ml.length?`<div class="tbl"><table><thead><tr><th>Модель</th><th>Шт.</th><th>Сумма, ₽</th></tr></thead><tbody>${ml.map(([k,v])=>`<tr><td>${esc(k)}</td><td>${num(v.q)}</td><td>${num(v.s)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="empty">За этот период отгрузок нет</p>'}</section>`;
+}
+function renderRecipient(name){
+  const st=recStats(name);
+  $('view').innerHTML=`
+  <button class="ghost" style="align-self:flex-start" onclick="openRec=null;renderSummary()">‹ Все получатели</button>
+  <section class="card"><div class="row"><h2>${esc(name)}</h2>${debtPill(st.debt)}</div>
+    <div class="stats"><div class="stat"><b>${money(st.shipped)}</b><span>отгружено</span></div><div class="stat"><b>${money(st.paid)}</b><span>оплачено</span></div><div class="stat"><b>${money(Math.max(0,st.debt))}</b><span>к оплате</span></div></div>
+  </section>
+  <section class="card"><h2>Записать оплату</h2><div class="grid2"><label class="fld"><span>Сумма, ₽</span><input id="f-pa" type="number" inputmode="decimal" min="0" step="any" placeholder="${st.debt>0?Math.round(st.debt):'50000'}"></label><label class="fld"><span>Дата</span><input id="f-pd" type="date" value="${today()}"></label></div><label class="fld"><span>Комментарий</span><input id="f-pn" placeholder="Например, перевод на карту, за № 18"></label><div class="actions"><button class="primary" data-r="${esc(name)}" onclick="addPayment(this.dataset.r)">Сохранить оплату</button></div></section>
+  <section class="card"><h2>Оплаты</h2>${st.pay.length?`<div>${st.pay.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(p=>`<div class="lrow"><div><b>${money(p.amount)}</b><div class="meta">${fmtD(p.date)}${p.note?' · '+esc(p.note):''}</div></div><button class="x" aria-label="Удалить оплату" onclick="deletePayment('${esc(p.id)}')">✕</button></div>`).join('')}</div>`:'<p class="empty">Оплат пока нет</p>'}</section>
+  <section class="card"><h2>Накладные · ${st.sh.length}</h2>${st.sh.length?`<div>${st.sh.slice().sort(byDateDesc).map(s=>`<div class="lrow"><div><b>№ ${esc(s.number)}</b> <span class="meta">· ${fmtD(s.date)} · ${num(count(s.items))} шт.</span></div><span class="sub">${money(sum(s.items))}</span></div>`).join('')}</div>`:'<p class="empty">Накладных пока нет</p>'}</section>`;
+}
+function addPayment(name){const a=+$('f-pa').value,d=$('f-pd').value||today(),n=$('f-pn').value.trim();if(!(a>0))return toast('Укажи сумму оплаты','err');put('payments',{id:uid('pay'),recipient:name,amount:a,date:d,note:n,createdAt:nowIso()});toast('Оплата записана');renderSummary()}
+async function deletePayment(id){const p=S.payments.find(x=>x.id===id);if(!p||!await ask(`Удалить оплату ${money(p.amount)} от ${fmtD(p.date)}?`,'Удалить',{danger:1}))return;remove('payments',id);toast('Оплата удалена');renderSummary()}
+
+/* ---------- catalog ---------- */
+function renderCatalog(){
+  $('view').innerHTML=`
+  <section class="card"><h2>Новая модель</h2><label class="fld"><span>Название</span><input id="f-pn" placeholder="Например, Бини"></label><div class="grid2"><label class="fld"><span>Вариант</span><input id="f-pv" placeholder="с отворотом, флис…"></label><label class="fld"><span>Цена за шт., ₽</span><input id="f-pp" type="number" inputmode="decimal" min="0" step="any" placeholder="260"></label></div><div class="actions"><button class="primary" onclick="createProduct()">Добавить в каталог</button></div></section>
+  <section class="card"><div class="row"><h2>Каталог</h2><span class="muted">${S.products.length} поз.</span></div><input id="f-cq" type="search" placeholder="Найти модель…" value="${esc(cq)}" oninput="cq=this.value;drawCList()"><div id="clist"></div></section>`;
+  drawCList();
+}
+function drawCList(){
+  const t=cq.trim().toLowerCase(),shipped={};S.shipments.forEach(s=>(s.items||[]).forEach(x=>{if(x.productId)shipped[x.productId]=(shipped[x.productId]||0)+(+x.qty||0)}));
+  const ps=S.products.slice().sort(byName).filter(p=>!t||(p.name+' '+p.variant).toLowerCase().includes(t));
+  $('clist').innerHTML=ps.length?ps.map(p=>editProd===p.id?`<div class="item"><label class="fld"><span>Название</span><input id="e-n" value="${esc(p.name)}"></label><div class="grid2"><label class="fld"><span>Вариант</span><input id="e-v" value="${esc(p.variant)}"></label><label class="fld"><span>Цена, ₽</span><input id="e-p" type="number" inputmode="decimal" min="0" step="any" value="${esc(p.price)}"></label></div><div class="actions"><button class="primary" onclick="saveProduct('${esc(p.id)}')">Сохранить</button><button onclick="editProd=null;drawCList()">Отмена</button><button class="danger" onclick="deleteProduct('${esc(p.id)}')">Удалить</button></div></div>`:`<div class="lrow"><div><b>${esc(p.name)}</b><div class="meta">${esc(p.variant)} · ${money(p.price)}${shipped[p.id]?' · отгружено '+num(shipped[p.id])+' шт.':''}</div></div><button class="chip" onclick="editProd='${esc(p.id)}';drawCList()">Изменить</button></div>`).join(''):'<p class="empty">Ничего не нашлось</p>';
+}
+function createProduct(){const name=$('f-pn').value.trim(),variant=$('f-pv').value.trim()||'Стандарт',pr=$('f-pp').value,price=+pr;if(!name||pr===''||!(price>=0))return toast('Укажи название и цену','err');if(S.products.some(p=>p.name.toLowerCase()===name.toLowerCase()&&(p.variant||'').toLowerCase()===variant.toLowerCase()))return toast('Такая модель уже есть','err');put('products',{id:uid('p'),name,variant,price});toast('Модель добавлена');renderCatalog()}
+function saveProduct(id){const p=S.products.find(x=>x.id===id),name=$('e-n').value.trim(),variant=$('e-v').value.trim()||'Стандарт',price=+$('e-p').value;if(!p||!name||!($('e-p').value!==''&&price>=0))return toast('Укажи название и цену','err');put('products',{...p,name,variant,price});editProd=null;toast('Сохранено. Старые накладные не меняются');drawCList()}
+async function deleteProduct(id){const p=S.products.find(x=>x.id===id);if(!p||!await ask(`Удалить «${label(p)}» из каталога? Старые накладные сохранятся.`,'Удалить',{danger:1}))return;remove('products',id);editProd=null;toast('Модель удалена');renderCatalog()}
+
+/* ---------- data & sync settings ---------- */
+function renderData(){
+  const time=meta.last?new Date(meta.last).toLocaleString('ru-RU'):'ещё не было';
+  $('view').innerHTML=`
+  <section class="card"><h2>Google Таблица</h2>
+    ${cfg.url?`<p class="meta" style="margin:0">Подключена. Последняя синхронизация: ${time}.</p>`:'<p class="meta" style="margin:0">Подключи таблицу, и каждая накладная будет сохраняться в твой Google Диск. Новый телефон или компаньон подключаются по той же ссылке и ключу.</p>'}
+    <label class="fld"><span>Ссылка веб-приложения</span><input id="f-url" type="url" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(cfg.url)}"></label>
+    <label class="fld"><span>Ключ</span><input id="f-key" placeholder="nit-…" value="${esc(cfg.key)}" autocomplete="off"></label>
+    <div class="actions"><button class="primary" onclick="saveCfg()">${cfg.url?'Сохранить':'Подключить'}</button>${cfg.url?'<button onclick="sync(true)">Синхронизировать сейчас</button><button class="ghost" onclick="dropCfg()">Отключить</button>':''}</div>
+    <details><summary>Как подключить таблицу</summary><ol class="steps">
+      <li>Создай новую Google Таблицу, например «NITTIONE Накладные».</li>
+      <li>В таблице открой «Расширения» → «Apps Script».</li>
+      <li>Удали всё в редакторе и вставь код из файла Code.gs. Нажми «Сохранить».</li>
+      <li>«Начать развёртывание» → «Новое развёртывание» → тип «Веб-приложение». «Запуск от имени»: я; «У кого есть доступ»: все. Нажми «Начать развёртывание» и разреши доступ.</li>
+      <li>Скопируй ссылку, которая заканчивается на /exec, и вставь сюда. Ключ возьми из начала кода (строка const KEY).</li>
+    </ol></details>
+  </section>
+  <section class="card"><h2>Получатели</h2><div>${S.recipients.slice().sort((a,b)=>a.name.localeCompare(b.name,'ru')).map(r=>`<div class="lrow"><span>${esc(r.name)}</span><button class="x" aria-label="Удалить получателя" onclick="deleteRecipient('${esc(r.id)}')">✕</button></div>`).join('')||'<p class="empty">Получателей пока нет</p>'}</div>
+  <div class="row"><input id="f-nr" placeholder="Имя и город, например Оля Казань"><button class="primary" onclick="addRecipient()">Добавить</button></div></section>
+  <section class="card"><h2>Файлы</h2>
+  <div class="actions"><button onclick="exportJSON()">Резервная копия</button><button onclick="exportCSV()">Таблица для Excel</button><button onclick="$('f-imp').click()">Восстановить из файла</button></div>
+  <input id="f-imp" type="file" accept=".json,application/json" hidden onchange="importData(this.files[0]);this.value=''"></section>`;
+}
+function saveCfg(){const url=$('f-url').value.trim(),key=$('f-key').value.trim();if(!/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(url))return toast('Нужна ссылка вида https://script.google.com/macros/s/…/exec','err');if(!key)return toast('Укажи ключ из кода (строка const KEY)','err');cfg={url,key};lsSet(LSC,JSON.stringify(cfg));syncErr='';firstPull=true;toast('Подключаю таблицу…');render();sync(true)}
+async function dropCfg(){if(!await ask('Отключить таблицу на этом телефоне? Данные останутся и в таблице, и здесь.','Отключить'))return;cfg={url:'',key:''};lsSet(LSC,'{}');syncErr='';render()}
+function addRecipient(){const v=$('f-nr').value.trim();if(!v)return;if(recNames().some(n=>n.toLowerCase()===v.toLowerCase()))return toast('Такой получатель уже есть','err');put('recipients',{id:uid('r'),name:v});toast('Получатель добавлен');renderData()}
+async function deleteRecipient(id){const r=S.recipients.find(x=>x.id===id);if(!r||!await ask(`Убрать «${r.name}» из списка получателей? Накладные и оплаты останутся.`,'Убрать',{danger:1}))return;remove('recipients',id);renderData()}
+
+/* ---------- files ---------- */
+async function saveFile(name,data,type,share){
+  const blob=data instanceof Blob?data:new Blob([data],{type});
+  if(share&&navigator.canShare){try{const f=new File([blob],name,{type:blob.type||type});if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return}}catch(e){if(e.name==='AbortError')return}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);toast('Файл скачан: '+name);
+}
+function exportJSON(){const data={version:2,exportedAt:nowIso(),products:S.products,recipients:recNames(),shipments:S.shipments.slice().sort((a,b)=>a.number-b.number),payments:S.payments};saveFile('nakladnye-backup-'+today()+'.json',JSON.stringify(data,null,2),'application/json')}
+function exportCSV(){const q=v=>{const s=String(v??'');return/[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s},c=n=>String(n).replace('.',',');const rows=[['Номер','Дата','Получатель','Модель','Вариант','Кол-во','Цена','Сумма']];S.shipments.slice().sort((a,b)=>a.number-b.number).forEach(s=>(s.items||[]).forEach(x=>rows.push([s.number,fmtD(s.date),s.recipient,x.name,x.variant,c(x.qty),c(x.price),c(x.qty*x.price)])));rows.push([]);rows.push(['Оплаты']);rows.push(['Дата','Получатель','Сумма','Комментарий']);S.payments.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(p=>rows.push([fmtD(p.date),p.recipient,c(p.amount),p.note||'']));saveFile('nakladnye-'+today()+'.csv','﻿'+rows.map(r=>r.map(q).join(';')).join('\r\n'),'text/csv')}
+async function importData(file){
+  if(!file)return;let o;try{o=JSON.parse(await file.text())}catch(e){return toast('Файл не читается. Нужен .json из «Резервной копии»','err')}
+  if(!Array.isArray(o.products)||!Array.isArray(o.shipments))return toast('Это не резервная копия накладных','err');
+  const pays=Array.isArray(o.payments)?o.payments:[],recs=(o.recipients||[]).map(r=>typeof r==='string'?r:r?.name).filter(Boolean);
+  o.shipments.forEach(s=>s.recipient&&recs.push(s.recipient));
+  if(!await ask(`Загрузить из файла ${o.shipments.length} накладных, ${o.products.length} моделей и ${pays.length} оплат?\nЗаписи из файла заменят такие же записи здесь, остальное останется.`,'Загрузить'))return;
+  o.products.forEach(p=>put('products',{id:String(p.id||uid('p')),name:String(p.name||''),variant:String(p.variant||'Стандарт'),price:+p.price||0},true));
+  o.shipments.forEach(s=>put('shipments',{id:String(s.id||uid('s')),number:+s.number||0,date:String(s.date||''),recipient:String(s.recipient||''),items:(s.items||[]).map(x=>({productId:String(x.productId||''),name:String(x.name||''),variant:String(x.variant||'Стандарт'),qty:+x.qty||0,price:+x.price||0})),createdAt:s.createdAt||nowIso()},true));
+  pays.forEach(p=>put('payments',{id:String(p.id||uid('pay')),recipient:String(p.recipient||''),amount:+p.amount||0,date:String(p.date||''),note:String(p.note||''),createdAt:p.createdAt||nowIso()},true));
+  rebuild();const have=new Set(recNames().map(x=>x.toLowerCase()));[...new Set(recs)].forEach(r=>{if(!have.has(r.toLowerCase())){put('recipients',{id:uid('r'),name:r},true);have.add(r.toLowerCase())}});
+  commit();toast('Готово: загружено '+o.shipments.length+' накладных');render();
+}
+
+/* ---------- invoice image / pdf / text ---------- */
+function invoiceCanvas(s){
+  const W=900,pad=48,c=document.createElement('canvas'),ctx=c.getContext('2d'),F='Montserrat,Arial,sans-serif';
+  ctx.font='27px '+F;
+  const wrap=(str,max)=>{const out=[];let line='';for(const w of String(str).split(/\s+/)){const t=line?line+' '+w:w;if(ctx.measureText(t).width>max&&line){out.push(line);line=w}else line=t}if(line)out.push(line);return out.length?out:['']};
+  const rows=s.items.map(x=>{const lines=wrap(x.name+(x.variant&&x.variant!=='Стандарт'?' ('+x.variant+')':''),440);return{x,lines,h:Math.max(80,lines.length*33+28)}});
+  const H=285+rows.reduce((a,r)=>a+r.h,0)+320;c.width=W;c.height=H;
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.fillStyle='#0b0b0b';ctx.font='500 32px '+F;try{ctx.letterSpacing='16px'}catch(e){}ctx.textAlign='center';ctx.fillText('NITTIONE',W/2+8,58);try{ctx.letterSpacing='0px'}catch(e){}ctx.textAlign='left';ctx.fillRect(pad,86,W-2*pad,2);ctx.translate(0,70);
+  ctx.font='bold 44px '+F;ctx.fillText('НАКЛАДНАЯ № '+s.number,pad,80);
+  ctx.font='28px '+F;ctx.fillText('Дата: '+fmtD(s.date),pad,134);ctx.fillText('Получатель: '+s.recipient,pad,176);
+  let y=224;ctx.fillStyle='#f0f0ef';ctx.fillRect(pad,y,W-2*pad,50);ctx.fillStyle='#0b0b0b';ctx.font='bold 24px '+F;ctx.fillText('Наименование',pad+12,y+33);ctx.textAlign='right';ctx.fillText('Кол-во',640,y+33);ctx.fillText('Сумма, ₽',W-pad-12,y+33);ctx.textAlign='left';y+=50;
+  for(const r of rows){ctx.strokeStyle='#dddddb';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pad,y+r.h);ctx.lineTo(W-pad,y+r.h);ctx.stroke();ctx.fillStyle='#0b0b0b';ctx.font='27px '+F;r.lines.forEach((l,i)=>ctx.fillText(l,pad+12,y+36+i*33));ctx.font='22px '+F;ctx.fillStyle='#6f6f6f';ctx.fillText(num(r.x.price)+' ₽/шт.',pad+12,y+r.h-14);ctx.fillStyle='#0b0b0b';ctx.font='26px '+F;ctx.textAlign='right';ctx.fillText(num(r.x.qty),640,y+38);ctx.fillText(num(r.x.qty*r.x.price),W-pad-12,y+38);ctx.textAlign='left';y+=r.h}
+  y+=50;ctx.font='bold 30px '+F;ctx.fillText('Всего: '+num(count(s.items))+' шт.',pad,y);y+=50;ctx.fillText('Итого: '+money(sum(s.items)),pad,y);
+  y+=80;ctx.font='24px '+F;ctx.fillStyle='#6f6f6f';ctx.fillText('Передал: ______________',pad,y);ctx.fillText('Получил: ______________',W/2+10,y);
+  return c;
+}
+const fname=(s,ext)=>'Накладная-'+String(s.number).replace(/[^\wА-Яа-яЁё-]/g,'')+(s.recipient?' '+s.recipient.replace(/[^\wА-Яа-яЁё -]/g,''):'')+'.'+ext;
+async function exportPNG(s){if(!s)return;try{await document.fonts?.ready}catch(e){}invoiceCanvas(s).toBlob(b=>{if(!b)return toast('Не удалось создать фото','err');saveFile(fname(s,'png'),b,'image/png',true)},'image/png')}
+async function exportPDF(s){if(!s)return;if(!window.jspdf)return toast('PDF загрузится, когда появится интернет. Пока отправь фото','err');try{await document.fonts?.ready}catch(e){}const c=invoiceCanvas(s),w=c.width*.6,h=c.height*.6;const pdf=new window.jspdf.jsPDF({orientation:w>h?'l':'p',unit:'pt',format:[w,h]});pdf.addImage(c.toDataURL('image/jpeg',.92),'JPEG',0,0,w,h);saveFile(fname(s,'pdf'),pdf.output('blob'),'application/pdf',true)}
+function invoiceText(s){return[`Накладная № ${s.number} от ${fmtD(s.date)}`,`Получатель: ${s.recipient}`,'',...s.items.map((x,i)=>`${i+1}. ${label(x)} — ${num(x.qty)} шт × ${num(x.price)} = ${money(x.qty*x.price)}`),'',`Всего: ${num(count(s.items))} шт.`,`Итого: ${money(sum(s.items))}`].join('\n')}
+function copyText(s){if(!s)return;const t=invoiceText(s);const fb=()=>ask('Скопируй текст накладной:','',{text:t,noOk:1});try{navigator.clipboard.writeText(t).then(()=>toast('Текст скопирован, вставь в WhatsApp или Telegram'),fb)}catch(e){fb()}}
+
+/* ---------- start ---------- */
+rebuild();
+if(cfg.url&&!store.shipments.length)firstPull=true;
+render();
+if(cfg.url)sync();
+try{navigator.storage?.persist?.()}catch(e){}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body></html>
