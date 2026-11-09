@@ -90,7 +90,7 @@ tr:last-child td{border-bottom:0}
 .stat{background:var(--surface);padding:12px;min-width:0}
 .stat b{display:block;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .stat span{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
-@media (max-width:420px){.stats{grid-template-columns:1fr 1fr}}
+@media (max-width:420px){.stats{grid-template-columns:1fr 1fr}.stat:last-child:nth-child(odd){grid-column:1/-1}}
 .rcard{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;width:100%;background:var(--surface);padding:14px;letter-spacing:0;font-weight:500}
 .rcard .l{display:flex;flex-direction:column;gap:2px;min-width:0}
 .rcard .r{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
@@ -340,28 +340,29 @@ function renderSummary(){
   if(period!=='all'&&!months.includes(period))period='all';
   const inP=s=>period==='all'||(s.date||'').startsWith(period),ps=S.shipments.filter(inP);
   const names=[...new Set([...recNames(),...S.shipments.map(s=>s.recipient),...S.payments.map(p=>p.recipient)])].filter(Boolean);
-  const rows=names.map(n=>{const st=recStats(n),p=ps.filter(s=>s.recipient===n);return{n,st,pq:p.reduce((a,s)=>a+count(s.items),0),ps:p.reduce((a,s)=>a+sum(s.items),0)}}).sort((a,b)=>b.ps-a.ps||b.st.debt-a.st.debt);
+  const rows=names.map(n=>{const st=recStats(n),p=ps.filter(s=>s.recipient===n);return{n,st,pq:p.reduce((a,s)=>a+count(s.items),0),ps:p.reduce((a,s)=>a+sum(s.items),0)}}).sort((a,b)=>b.ps-a.ps);
   const models={};ps.forEach(s=>(s.items||[]).forEach(x=>{const k=label(x);models[k]=models[k]||{q:0,s:0};models[k].q+=+x.qty||0;models[k].s+=(+x.qty||0)*(+x.price||0)}));
   const ml=Object.entries(models).sort((a,b)=>b[1].q-a[1].q);
-  const totalDebt=names.reduce((a,n)=>a+Math.max(0,recStats(n).debt),0);
+  
   $('view').innerHTML=`
   <section class="card">
     <label class="fld"><span>Период</span><select id="f-period" onchange="period=this.value;renderSummary()"><option value="all">Всё время</option>${months.map(m=>`<option value="${m}" ${m===period?'selected':''}>${monthName(m)}</option>`).join('')}</select></label>
-    <div class="stats"><div class="stat"><b>${num(ps.reduce((a,s)=>a+count(s.items),0))}</b><span>шт. отгружено</span></div><div class="stat"><b>${money(ps.reduce((a,s)=>a+sum(s.items),0))}</b><span>на сумму</span></div><div class="stat"><b>${money(totalDebt)}</b><span>долг получателей</span></div></div>
+    <div class="stats"><div class="stat"><b>${num(ps.reduce((a,s)=>a+count(s.items),0))}</b><span>шт. отгружено</span></div><div class="stat"><b>${money(ps.reduce((a,s)=>a+sum(s.items),0))}</b><span>на сумму</span></div><div class="stat"><b>${ps.length}</b><span>накладных</span></div></div>
   </section>
-  <section class="card"><h2>Получатели</h2><div class="list">${rows.length?rows.map(r=>`<button class="rcard" data-r="${esc(r.n)}" onclick="openRec=this.dataset.r;renderSummary();window.scrollTo(0,0)"><span class="l"><b>${esc(r.n)}</b><span class="meta">${period==='all'?'за всё время':'за месяц'}: ${num(r.pq)} шт. · ${money(r.ps)}</span></span><span class="r">${debtPill(r.st.debt)}<span class="meta">›</span></span></button>`).join(''):'<p class="empty">Получателей пока нет</p>'}</div><p class="meta" style="margin:0">Нажми на получателя, чтобы записать оплату и увидеть все его накладные.</p></section>
+  <section class="card"><h2>Получатели</h2><div class="list">${rows.length?rows.map(r=>`<button class="rcard" data-r="${esc(r.n)}" onclick="openRec=this.dataset.r;renderSummary();window.scrollTo(0,0)"><span class="l"><b>${esc(r.n)}</b><span class="meta">${period==='all'?'за всё время':'за месяц'}: ${num(r.pq)} шт. · ${money(r.ps)}</span></span><span class="r"><span class="meta">›</span></span></button>`).join(''):'<p class="empty">Получателей пока нет</p>'}</div><p class="meta" style="margin:0">Нажми на получателя, чтобы увидеть его накладные и модели.</p></section>
   <section class="card"><h2>По моделям</h2>${ml.length?`<div class="tbl"><table><thead><tr><th>Модель</th><th>Шт.</th><th>Сумма, ₽</th></tr></thead><tbody>${ml.map(([k,v])=>`<tr><td>${esc(k)}</td><td>${num(v.q)}</td><td>${num(v.s)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="empty">За этот период отгрузок нет</p>'}</section>`;
 }
 function renderRecipient(name){
-  const st=recStats(name);
+  const sh=S.shipments.filter(s=>s.recipient===name).sort(byDateDesc);
+  const models={};sh.forEach(s=>(s.items||[]).forEach(x=>{const k=label(x);models[k]=(models[k]||0)+(+x.qty||0)}));
+  const ml=Object.entries(models).sort((a,b)=>b[1]-a[1]);
   $('view').innerHTML=`
   <button class="ghost" style="align-self:flex-start" onclick="openRec=null;renderSummary()">‹ Все получатели</button>
-  <section class="card"><div class="row"><h2>${esc(name)}</h2>${debtPill(st.debt)}</div>
-    <div class="stats"><div class="stat"><b>${money(st.shipped)}</b><span>отгружено</span></div><div class="stat"><b>${money(st.paid)}</b><span>оплачено</span></div><div class="stat"><b>${money(Math.max(0,st.debt))}</b><span>к оплате</span></div></div>
+  <section class="card"><h2>${esc(name)}</h2>
+    <div class="stats"><div class="stat"><b>${sh.length}</b><span>накладных</span></div><div class="stat"><b>${num(sh.reduce((a,s)=>a+count(s.items),0))}</b><span>шт.</span></div><div class="stat"><b>${money(sh.reduce((a,s)=>a+sum(s.items),0))}</b><span>на сумму</span></div></div>
   </section>
-  <section class="card"><h2>Записать оплату</h2><div class="grid2"><label class="fld"><span>Сумма, ₽</span><input id="f-pa" type="number" inputmode="decimal" min="0" step="any" placeholder="${st.debt>0?Math.round(st.debt):'50000'}"></label><label class="fld"><span>Дата</span><input id="f-pd" type="date" value="${today()}"></label></div><label class="fld"><span>Комментарий</span><input id="f-pn" placeholder="Например, перевод на карту, за № 18"></label><div class="actions"><button class="primary" data-r="${esc(name)}" onclick="addPayment(this.dataset.r)">Сохранить оплату</button></div></section>
-  <section class="card"><h2>Оплаты</h2>${st.pay.length?`<div>${st.pay.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(p=>`<div class="lrow"><div><b>${money(p.amount)}</b><div class="meta">${fmtD(p.date)}${p.note?' · '+esc(p.note):''}</div></div><button class="x" aria-label="Удалить оплату" onclick="deletePayment('${esc(p.id)}')">✕</button></div>`).join('')}</div>`:'<p class="empty">Оплат пока нет</p>'}</section>
-  <section class="card"><h2>Накладные · ${st.sh.length}</h2>${st.sh.length?`<div>${st.sh.slice().sort(byDateDesc).map(s=>`<div class="lrow"><div><b>№ ${esc(s.number)}</b> <span class="meta">· ${fmtD(s.date)} · ${num(count(s.items))} шт.</span></div><span class="sub">${money(sum(s.items))}</span></div>`).join('')}</div>`:'<p class="empty">Накладных пока нет</p>'}</section>`;
+  <section class="card"><h2>Накладные</h2>${sh.length?`<div>${sh.map(s=>`<div class="lrow"><div><b>№ ${esc(s.number)}</b> <span class="meta">· ${fmtD(s.date)} · ${num(count(s.items))} шт.</span></div><span class="sub">${money(sum(s.items))}</span></div>`).join('')}</div>`:'<p class="empty">Накладных пока нет</p>'}</section>
+  <section class="card"><h2>По моделям</h2>${ml.length?`<div class="tbl"><table><thead><tr><th>Модель</th><th>Шт.</th></tr></thead><tbody>${ml.map(([k,v])=>`<tr><td>${esc(k)}</td><td>${num(v)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="empty">Отгрузок пока нет</p>'}</section>`;
 }
 function addPayment(name){const a=+$('f-pa').value,d=$('f-pd').value||today(),n=$('f-pn').value.trim();if(!(a>0))return toast('Укажи сумму оплаты','err');put('payments',{id:uid('pay'),recipient:name,amount:a,date:d,note:n,createdAt:nowIso()});toast('Оплата записана');renderSummary()}
 async function deletePayment(id){const p=S.payments.find(x=>x.id===id);if(!p||!await ask(`Удалить оплату ${money(p.amount)} от ${fmtD(p.date)}?`,'Удалить',{danger:1}))return;remove('payments',id);toast('Оплата удалена');renderSummary()}
@@ -417,7 +418,7 @@ async function saveFile(name,data,type,share){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);toast('Файл скачан: '+name);
 }
 function exportJSON(){const data={version:2,exportedAt:nowIso(),products:S.products,recipients:recNames(),shipments:S.shipments.slice().sort((a,b)=>a.number-b.number),payments:S.payments};saveFile('nakladnye-backup-'+today()+'.json',JSON.stringify(data,null,2),'application/json')}
-function exportCSV(){const q=v=>{const s=String(v??'');return/[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s},c=n=>String(n).replace('.',',');const rows=[['Номер','Дата','Получатель','Модель','Вариант','Кол-во','Цена','Сумма']];S.shipments.slice().sort((a,b)=>a.number-b.number).forEach(s=>(s.items||[]).forEach(x=>rows.push([s.number,fmtD(s.date),s.recipient,x.name,x.variant,c(x.qty),c(x.price),c(x.qty*x.price)])));rows.push([]);rows.push(['Оплаты']);rows.push(['Дата','Получатель','Сумма','Комментарий']);S.payments.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(p=>rows.push([fmtD(p.date),p.recipient,c(p.amount),p.note||'']));saveFile('nakladnye-'+today()+'.csv','﻿'+rows.map(r=>r.map(q).join(';')).join('\r\n'),'text/csv')}
+function exportCSV(){const q=v=>{const s=String(v??'');return/[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s},c=n=>String(n).replace('.',',');const rows=[['Номер','Дата','Получатель','Модель','Вариант','Кол-во','Цена','Сумма']];S.shipments.slice().sort((a,b)=>a.number-b.number).forEach(s=>(s.items||[]).forEach(x=>rows.push([s.number,fmtD(s.date),s.recipient,x.name,x.variant,c(x.qty),c(x.price),c(x.qty*x.price)])));saveFile('nakladnye-'+today()+'.csv','﻿'+rows.map(r=>r.map(q).join(';')).join('\r\n'),'text/csv')}
 async function importData(file){
   if(!file)return;let o;try{o=JSON.parse(await file.text())}catch(e){return toast('Файл не читается. Нужен .json из «Резервной копии»','err')}
   if(!Array.isArray(o.products)||!Array.isArray(o.shipments))return toast('Это не резервная копия накладных','err');
