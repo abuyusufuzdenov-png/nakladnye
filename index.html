@@ -198,11 +198,11 @@ async function sync(manual){
   syncing=true;drawStatus();const r0=rev;
   try{
     const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),30000);
-    const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key:cfg.key,data:store}),signal:ctl.signal,redirect:'follow'});
+    const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key:cfg.key,data:store,report:buildReport()}),signal:ctl.signal,redirect:'follow'});
     clearTimeout(to);
     let j;try{j=await r.json()}catch(e){throw new Error('Таблица ответила не так. Проверь ссылку и доступ «Все»')}
     if(!j.ok)throw new Error(j.error==='Неверный ключ'?'Неверный ключ. Проверь его во вкладке «Данные»':(j.error||'Ошибка таблицы'));
-    store=merge(store,j.data||{});if(rev===r0)meta.dirty=false;meta.last=Date.now();syncErr='';persist();rebuild();
+    const before=JSON.stringify(store);store=merge(store,j.data||{});if(JSON.stringify(store)!==before)again=true;if(rev===r0)meta.dirty=false;meta.last=Date.now();syncErr='';persist();rebuild();
     if(manual)toast('Синхронизировано с таблицей');
   }catch(e){
     syncErr=!navigator.onLine?'нет интернета':e.name==='AbortError'?'таблица долго не отвечает':e.name==='TypeError'?'таблица недоступна, проверь ссылку':e.message;
@@ -212,6 +212,19 @@ async function sync(manual){
 window.addEventListener('online',()=>sync());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
 setInterval(()=>{if(meta.dirty&&!syncing)sync()},60000);
+
+/* ---------- what the Google Sheet shows ---------- */
+function buildReport(){
+  const M=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  const rows=[['Итого по фильтру','','','','','','=SUBTOTAL(109,G3:G)','','=SUBTOTAL(109,I3:I)'],['№','Дата','Месяц','Получатель','Модель','Вариант','Кол-во','Цена','Сумма']];
+  const colors=[];let shade=false;
+  store.shipments.filter(s=>!s.deleted).sort(byDateDesc).forEach(s=>{shade=!shade;const p=String(s.date||'').split('-'),ok=p.length===3;
+    (s.items||[]).forEach(x=>{const q=+x.qty||0,pr=+x.price||0;rows.push([+s.number||0,ok?`=DATE(${+p[0]},${+p[1]},${+p[2]})`:'',ok?p[0]+'-'+p[1]+' '+M[+p[1]-1]:'',s.recipient||'',x.name||'',x.variant&&x.variant!=='Стандарт'?x.variant:'',q,pr,q*pr]);colors.push(shade?'#f2f2f2':'#ffffff')})});
+  const n=rows.length-2;
+  const styles=[{r:1,c:1,nc:9,bold:true},{r:2,c:1,nc:9,bold:true,bg:'#000000',color:'#ffffff'},{r:1,c:7,fmt:'#,##0" шт."'},{r:1,c:9,fmt:'#,##0" ₽"'}];
+  if(n>0)styles.push({r:3,c:2,nr:n,fmt:'dd.mm.yyyy'},{r:3,c:7,nr:n,nc:2,fmt:'#,##0'},{r:3,c:9,nr:n,fmt:'#,##0" ₽"'});
+  return{remove:['Оплаты','Долги'],sheets:[{name:'Накладные',rows,font:{family:'Montserrat',size:10},frozen:2,filterRow:2,widths:[50,90,130,180,130,140,80,70,110],bgs:{r:3,colors},styles}]};
+}
 
 /* ---------- ui state ---------- */
 let tab=lsGet('nak_tab')||'new',editing=null,hq='',hr='',pq='',cq='',period='all',openRec=null,editProd=null,openShip=null,pending=false;
